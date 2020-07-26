@@ -88,16 +88,9 @@ impl<N, E> Ubergraph<N, E, usize> {
         for (i, (_, nodes)) in self.edge_iter().enumerate() {
             for node in nodes {
                 match *node {
-                    EdgeMember::Vertex(ix) => {
+                    node => {
                         g.add_edge(
-                            self.edge_node_to_node_index(EdgeMember::Vertex(ix)),
-                            self.edge_node_to_node_index(EdgeMember::Edge(i)),
-                            (),
-                        );
-                    }
-                    en => {
-                        g.add_edge(
-                            self.edge_node_to_node_index(en),
+                            self.edge_node_to_node_index(node),
                             self.edge_node_to_node_index(EdgeMember::Edge(i)),
                             (),
                         );
