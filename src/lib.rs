@@ -5,7 +5,6 @@ use petgraph::Directed;
 use petgraph::Direction;
 
 use std::iter::Iterator;
-use std::marker::PhantomData;
 
 ///! A Simple stupid attempt at building ubergraphs based on vectors.
 ///! While reusing a bunch of types from petgraph.
@@ -28,6 +27,12 @@ pub struct Ubergraph<N, E, Ix> {
     edges: Vec<(E, Vec<EdgeMember<Ix, Ix>>)>,
 }
 
+impl<N, E> Default for Ubergraph<N, E, usize> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<N, E> Ubergraph<N, E, usize> {
     pub fn new() -> Ubergraph<N, E, usize> {
         Ubergraph {
@@ -45,8 +50,7 @@ impl<N, E> Ubergraph<N, E, usize> {
     }
 
     pub fn add_node_to_edge(&mut self, idx: usize, en: EdgeMember<usize, usize>) {
-        let (_, edge_nodes): &mut (E, Vec<EdgeMember<usize, usize>>) =
-            &mut self.edges[idx];
+        let (_, edge_nodes): &mut (E, Vec<EdgeMember<usize, usize>>) = &mut self.edges[idx];
         edge_nodes.push(en);
     }
 
@@ -98,23 +102,37 @@ impl<N, E> Ubergraph<N, E, usize> {
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum DirectedEdgeMember<VIx, EIx> {
-    Member(Direction, EdgeMember<VIx, EIx>),
+pub type DirectedEdgeMember<VIx, EIx> = (Direction, EdgeMember<VIx, EIx>);
+
+impl<VIx, EIx> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
+    fn into(self) -> EdgeMember<VIx, EIx> {
+        self.1
+    }
 }
 
-/// Lacking a formal definition, this seems appropriate given the definition of a directed hypergraph.
-/// Both edges, and vertices can be either Incoming, or Outgoing.
+/// Hypergraphs: A definition of recusursive hypergraph structure doesn't defined directed
+/// ubergraphs.
 ///
-/// FIXME make the types more like those of Ubergraph.
-pub struct DirectedUbergraph<N, E, Ty = Directed, Ix = DirectedEdgeMember<usize, usize>> {
+/// The definition given in [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy)
+/// uses a enum {-1, 0, 1} matrix.
+///
+/// Here we use a tuple, `(petgraph::Direction, EdgeMember)`, dropping the 0
+///
+/// Thus a directed hyperedge would have nodes like:
+/// [(Incoming, Vertex(_)), (Outgoing, Vertex(_))]
+///
+/// A directed uberedge merely extends the Direction to edges.
+/// [(Incoming, Edge(_)) (Outgoing, Edge(_))]
+///
+/// Seems like the natural thing to do.
+
+pub struct DirectedUbergraph<N, E, Ix> {
     vertices: Vec<N>,
-    edges: Vec<(E, Vec<Ix>)>,
-    ty: PhantomData<Ty>,
+    edges: Vec<(E, Vec<DirectedEdgeMember<Ix, Ix>>)>,
 }
 
 /// FIXME this hasn't really been worked on.
-impl<N, E, Ty> DirectedUbergraph<N, E, Ty> {
+impl<N, E> DirectedUbergraph<N, E, usize> {
     pub fn edge_iter(
         &self,
     ) -> impl Iterator<Item = (&E, impl Iterator<Item = &DirectedEdgeMember<usize, usize>>)> {
