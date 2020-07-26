@@ -14,7 +14,6 @@ use petgraph::Direction;
 
 use std::iter::Iterator;
 
-
 /// A member of an edge
 ///
 /// As a bit of confusing terminology sometimes I call this a node.
@@ -158,14 +157,33 @@ impl<N, E> DirectedUbergraph<N, E, usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use insta;
     use petgraph::dot::Dot;
-    #[test]
+
+    fn test_helper<T: std::fmt::Display>(
+        vertices: &[T],
+        edges: &[&[EdgeMember<usize, usize>]],
+    ) -> Ubergraph<String, String, usize> {
+        let mut ug = Ubergraph::new();
+        for idx in vertices.iter() {
+            let label = format!("v{}", idx);
+            ug.add_vertex(label);
+        }
+        for (idx, es) in edges.iter().enumerate() {
+            let label = format!("e{}", idx + 1);
+            ug.add_edge(label);
+            for e in es.iter() {
+                ug.add_node_to_edge(idx, *e)
+            }
+        }
+        ug
+    }
+
     // https://arxiv.org/pdf/1704.05547.pdf
     // Example 2.
+    #[test]
     fn example_2() {
         use EdgeMember::*;
-
-        let mut ug = Ubergraph::new();
         let verts = [1, 2, 3];
         let edges = [
             &[Vertex(0)][..],
@@ -175,28 +193,16 @@ mod tests {
             &[Vertex(0), Edge(3)][..],
         ];
 
-        for idx in verts.iter() {
-            let label = format!("v{}", idx);
-            ug.add_vertex(label);
-        }
-        for (idx, es) in edges.iter().enumerate() {
-            let label = format!("e{}", idx + 1);
-            ug.add_edge(label);
-            for e in es.iter() {
-                ug.add_node_to_edge(idx, *e)
-            }
-        }
-
-        let levi = ug.levi();
-        println!("{:?}", Dot::with_config(&levi, &[]));
+        let ug = test_helper(&verts, &edges);
+        // For some reason this output looks nicer than assert_debug_snapshot!().
+        let dot_str = format!("{:?}", Dot::with_config(&ug.levi(), Default::default()));
+        insta::assert_snapshot!(dot_str);
     }
 
     // https://arxiv.org/pdf/1704.05547.pdf
     #[test]
     fn hypergraph_example_1() {
         use EdgeMember::*;
-
-        let mut ug = Ubergraph::new();
         let verts = [1, 2, 3, 4, 5];
         let edges = [
             &[Vertex(0)][..],
@@ -204,21 +210,9 @@ mod tests {
             &[Vertex(1), Vertex(2)][..],
             &[Vertex(0), Vertex(2), Vertex(4)][..],
         ];
-
-        for idx in verts.iter() {
-            let label = format!("v{}", idx);
-            ug.add_vertex(label);
-        }
-
-        for (idx, es) in edges.iter().enumerate() {
-            let label = format!("e{}", idx + 1);
-            ug.add_edge(label);
-            for e in es.iter() {
-                ug.add_node_to_edge(idx, *e)
-            }
-        }
-
-        let levi = ug.levi();
-        println!("{:?}", Dot::with_config(&levi, &[]));
+        let ug = test_helper(&verts, &edges);
+        // For some reason this output looks nicer than assert_debug_snapshot!().
+        let dot_str = format!("{:?}", Dot::with_config(&ug.levi(), Default::default()));
+        insta::assert_snapshot!(dot_str);
     }
 }

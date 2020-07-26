@@ -1,3 +1,7 @@
+---
+source: src/lib.rs
+expression: dot_str
+---
 digraph {
     0 [ label = "Left(\"v1\")" ]
     1 [ label = "Left(\"v2\")" ]

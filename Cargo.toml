@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 either = "1.5"
 petgraph = "0.5"
+
+[dev-dependencies]
+insta = "0.16.1"
