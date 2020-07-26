@@ -133,8 +133,8 @@ impl<N, E, Ty> DirectedUbergraph<N, E, Ty> {
 
 #[cfg(test)]
 mod tests {
-    use petgraph::dot::Dot;
     use super::*;
+    use petgraph::dot::Dot;
     #[test]
     // https://arxiv.org/pdf/1704.05547.pdf
     // Example 2.
@@ -174,10 +174,11 @@ mod tests {
 
         let mut ug = Ubergraph::new();
         let verts = [1, 2, 3, 4, 5];
-        let edges = [&[Vertex(0)][..],
-                     &[Vertex(0), Vertex(2)][..],
-                     &[Vertex(1), Vertex(2)][..],
-                     &[Vertex(0), Vertex(2), Vertex(4)][..],
+        let edges = [
+            &[Vertex(0)][..],
+            &[Vertex(0), Vertex(2)][..],
+            &[Vertex(1), Vertex(2)][..],
+            &[Vertex(0), Vertex(2), Vertex(4)][..],
         ];
 
         for idx in verts.iter() {
