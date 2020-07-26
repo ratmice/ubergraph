@@ -1,3 +1,11 @@
+//! A Simple stupid attempt at building ubergraphs based on vectors.
+//! While reusing a bunch of types from petgraph.
+//!
+//! Probably not ideal, as it means you cannot remove nodes edges, or edge members without
+//! affecting the stability of indices.
+//!
+//! Just supports the basics of adding vertices and edges, and computing the incidence graph.
+
 use either::Either;
 use petgraph::graph::Graph;
 use petgraph::graph::NodeIndex;
@@ -6,20 +14,21 @@ use petgraph::Direction;
 
 use std::iter::Iterator;
 
-///! A Simple stupid attempt at building ubergraphs based on vectors.
-///! While reusing a bunch of types from petgraph.
-///!
-///! Probably not ideal, as it means you cannot remove nodes edges, or edge members without
-///! affecting the stability of indices.
-///!
-///! Just supports the basics of adding vertices and edges, and computing the incidence graph.
 
+/// A member of an edge
+///
+/// As a bit of confusing terminology sometimes I call this a node.
+/// In Typical nomenclature the words `node` and `vertex` can be used interchangably.
+/// When I say Vertex I mean a vertex, and when I say node, I mean a member of an edge
+/// which can be either a Vertex or an Edge.
+///
+/// I've called this EdgeMember to avoid the confusion.
 #[derive(Copy, Clone)]
 pub enum EdgeMember<VIx, EIx> {
     Edge(EIx),
     Vertex(VIx),
 }
-
+/// A recursive hypergraph structure
 pub struct Ubergraph<N, E, Ix> {
     // In theory I'd probably rather just do away with N
     // and make vertices merely a counter or interval tree.
@@ -102,6 +111,7 @@ impl<N, E> Ubergraph<N, E, usize> {
     }
 }
 
+/// A member of an edge with a direction, either Incoming or Outgoing.
 pub type DirectedEdgeMember<VIx, EIx> = (Direction, EdgeMember<VIx, EIx>);
 
 impl<VIx, EIx> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
@@ -110,22 +120,22 @@ impl<VIx, EIx> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
     }
 }
 
-/// Hypergraphs: A definition of recusursive hypergraph structure doesn't defined directed
-/// ubergraphs.
+/// A directed recursive ubergraph structure.
 ///
-/// The definition given in [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy)
+/// The ubergraph definition doesn't defined directed ubergraphs.
+///
+/// The definition given in [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy) [DOI](https://doi.org/10.1016/0166-218X(93)90045-P)
 /// uses a enum {-1, 0, 1} matrix.
 ///
 /// Here we use a tuple, `(petgraph::Direction, EdgeMember)`, dropping the 0
 ///
 /// Thus a directed hyperedge would have nodes like:
-/// [(Incoming, Vertex(_)), (Outgoing, Vertex(_))]
+/// `[(Incoming, Vertex(0)), (Outgoing, Vertex(1))]`
 ///
-/// A directed uberedge merely extends the Direction to edges.
-/// [(Incoming, Edge(_)) (Outgoing, Edge(_))]
+/// While a directed uberedge merely extends the Direction to edges.
+/// `[(Incoming, Edge(0)) (Outgoing, Edge(1))]`
 ///
-/// Seems like the natural thing to do.
-
+/// Seems like the natural thing to do, We will have to see for the Levi graph though.
 pub struct DirectedUbergraph<N, E, Ix> {
     vertices: Vec<N>,
     edges: Vec<(E, Vec<DirectedEdgeMember<Ix, Ix>>)>,
