@@ -1,0 +1,9 @@
+[package]
+name = "ubergraph"
+version = "0.0.1"
+authors = ["matt rice <ratmice@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+either = "1.5"
+petgraph = "0.5"
