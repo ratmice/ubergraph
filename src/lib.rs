@@ -87,15 +87,11 @@ impl<N, E> Ubergraph<N, E, usize> {
         // without an associated vertex.
         for (i, (_, nodes)) in self.edge_iter().enumerate() {
             for node in nodes {
-                match *node {
-                    node => {
-                        g.add_edge(
-                            self.edge_node_to_node_index(node),
-                            self.edge_node_to_node_index(EdgeMember::Edge(i)),
-                            (),
-                        );
-                    }
-                };
+                g.add_edge(
+                    self.edge_node_to_node_index(*node),
+                    self.edge_node_to_node_index(EdgeMember::Edge(i)),
+                    (),
+                );
             }
         }
         g
