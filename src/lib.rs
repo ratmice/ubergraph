@@ -46,7 +46,7 @@ impl<N, E> Ubergraph<N, E, usize> {
 
     pub fn add_node_to_edge(&mut self, idx: usize, en: EdgeMember<usize, usize>) {
         let (_, edge_nodes): &mut (E, Vec<EdgeMember<usize, usize>>) =
-            &mut self.edges[idx as usize];
+            &mut self.edges[idx];
         edge_nodes.push(en);
     }
 
@@ -155,7 +155,7 @@ mod tests {
             let label = format!("e{}", idx + 1);
             ug.add_edge(label);
             for e in es.iter() {
-                ug.add_node_to_edge(idx as usize, *e)
+                ug.add_node_to_edge(idx, *e)
             }
         }
 
@@ -186,7 +186,7 @@ mod tests {
             let label = format!("e{}", idx + 1);
             ug.add_edge(label);
             for e in es.iter() {
-                ug.add_node_to_edge(idx as usize, *e)
+                ug.add_node_to_edge(idx, *e)
             }
         }
 
