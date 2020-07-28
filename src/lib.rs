@@ -54,7 +54,7 @@ pub struct Ubergraph<N, E, Ix: Ord> {
     // In theory I'd probably rather just do away with N
     // and make vertices merely a counter or interval tree.
     vertices: Vec<N>,
-    edges: Vec<(E, Vec<EdgeMember<Ix, Ix>>)>,
+    edges: Vec<(E, im::OrdSet<EdgeMember<Ix, Ix>>)>,
 }
 
 impl<N, E> Default for Ubergraph<N, E, usize> {
@@ -76,12 +76,12 @@ impl<N, E> Ubergraph<N, E, usize> {
     }
 
     pub fn add_edge(&mut self, e: E) {
-        self.edges.push((e, Vec::new()));
+        self.edges.push((e, im::OrdSet::new()));
     }
 
     pub fn add_node_to_edge(&mut self, idx: usize, en: EdgeMember<usize, usize>) {
-        let (_, edge_nodes): &mut (E, Vec<EdgeMember<usize, usize>>) = &mut self.edges[idx];
-        edge_nodes.push(en);
+        let (_, edge_nodes): &mut (E, im::OrdSet<EdgeMember<usize, usize>>) = &mut self.edges[idx];
+        edge_nodes.insert(en);
     }
 
     pub fn edge_iter(

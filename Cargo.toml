@@ -9,6 +9,7 @@ either = "1.5"
 petgraph = "0.5"
 nalgebra = "0.21.1"
 num-traits = "0.2.12"
+im = "15.0.0"
 
 [dev-dependencies]
 insta = "0.16.1"
