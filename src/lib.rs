@@ -7,12 +7,15 @@
 //! Just supports the basics of adding vertices and edges, and computing the incidence graph.
 
 use either::Either;
-use petgraph::graph::Graph;
-use petgraph::graph::NodeIndex;
-use petgraph::Directed;
-use petgraph::Direction;
-
+use nalgebra::base::{DMatrix, Matrix, VecStorage};
+use nalgebra::Dynamic;
+use petgraph::graph::{Graph, NodeIndex};
+use petgraph::{Directed, Direction};
+use std::cmp::Ordering;
 use std::iter::Iterator;
+mod num_bool;
+
+use num_bool::Bool;
 
 /// A member of an edge
 ///
@@ -22,13 +25,32 @@ use std::iter::Iterator;
 /// which can be either a Vertex or an Edge.
 ///
 /// I've called this EdgeMember to avoid the confusion.
-#[derive(Copy, Clone)]
-pub enum EdgeMember<VIx, EIx> {
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum EdgeMember<VIx: Ord, EIx: Ord> {
     Edge(EIx),
     Vertex(VIx),
 }
+
+impl<VIx: Ord, EIx: Ord> PartialOrd for EdgeMember<VIx, EIx> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// Vertices less than Edges.
+impl<VIx: Ord, EIx: Ord> Ord for EdgeMember<VIx, EIx> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (EdgeMember::Edge(s), EdgeMember::Edge(o)) => s.cmp(o),
+            (EdgeMember::Vertex(s), EdgeMember::Vertex(o)) => s.cmp(o),
+            (EdgeMember::Edge(_), EdgeMember::Vertex(_)) => Ordering::Greater,
+            (EdgeMember::Vertex(_), EdgeMember::Edge(_)) => Ordering::Less,
+        }
+    }
+}
+
 /// A recursive hypergraph structure
-pub struct Ubergraph<N, E, Ix> {
+pub struct Ubergraph<N, E, Ix: Ord> {
     // In theory I'd probably rather just do away with N
     // and make vertices merely a counter or interval tree.
     vertices: Vec<N>,
@@ -81,6 +103,23 @@ impl<N, E> Ubergraph<N, E, usize> {
         }
     }
 
+    // FIXME
+    fn matrix(
+        &self,
+    ) -> Matrix<
+        Bool<bool>,
+        nalgebra::Dynamic,
+        nalgebra::Dynamic,
+        VecStorage<Bool<bool>, Dynamic, Dynamic>,
+    > {
+        let matrix = DMatrix::<Bool<bool>>::from_element(
+            self.vertices.len() + self.edges.len(),
+            self.edges.len(),
+            false.into(),
+        );
+        matrix
+    }
+
     pub fn levi(&self) -> Graph<Either<&N, &E>, (), Directed, usize> {
         let mut g = Graph::<Either<&N, &E>, (), Directed, usize>::with_capacity(
             self.vertices.len() + self.edges.len(),
@@ -113,7 +152,7 @@ impl<N, E> Ubergraph<N, E, usize> {
 /// A member of an edge with a direction, either Incoming or Outgoing.
 pub type DirectedEdgeMember<VIx, EIx> = (Direction, EdgeMember<VIx, EIx>);
 
-impl<VIx, EIx> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
+impl<VIx: Ord, EIx: Ord> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
     fn into(self) -> EdgeMember<VIx, EIx> {
         self.1
     }
@@ -135,7 +174,7 @@ impl<VIx, EIx> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
 /// `[(Incoming, Edge(0)) (Outgoing, Edge(1))]`
 ///
 /// Seems like the natural thing to do, We will have to see for the Levi graph though.
-pub struct DirectedUbergraph<N, E, Ix> {
+pub struct DirectedUbergraph<N, E, Ix: Ord> {
     vertices: Vec<N>,
     edges: Vec<(E, Vec<DirectedEdgeMember<Ix, Ix>>)>,
 }
