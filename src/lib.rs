@@ -292,8 +292,7 @@ mod tests {
         ug
     }
 
-    // https://arxiv.org/pdf/1704.05547.pdf
-    // Example 2 from
+    // Example 2 from https://arxiv.org/pdf/1704.05547.pdf
     const EXAMPLE2: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
         &[1, 2, 3],
         &[
@@ -373,19 +372,33 @@ mod tests {
         )
     }
 
+    // Example 1 from https://arxiv.org/pdf/1704.05547.pdf
+    const EXAMPLE1: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
+        &[1, 2, 3, 4, 5],
+        &[
+            &[Vertex(0)],
+            &[Vertex(0), Vertex(2)],
+            &[Vertex(1), Vertex(2)],
+            &[Vertex(0), Vertex(2), Vertex(4)],
+        ]
+    );
+
     #[test]
     fn hypergraph_example_1() {
-        use EdgeMember::*;
-        let verts = [1, 2, 3, 4, 5];
-        let edges = [
-            &[Vertex(0)][..],
-            &[Vertex(0), Vertex(2)][..],
-            &[Vertex(1), Vertex(2)][..],
-            &[Vertex(0), Vertex(2), Vertex(4)][..],
-        ];
+        let verts = EXAMPLE1.0;
+        let edges = EXAMPLE1.1;
         let ug = test_helper(&verts, &edges);
         // For some reason this output looks nicer than assert_debug_snapshot!().
         let dot_str = format!("{:?}", Dot::with_config(&ug.levi(), Default::default()));
         insta::assert_snapshot!(dot_str);
+    }
+
+    #[test]
+    fn hypergraph_depth() {
+        let verts = EXAMPLE1.0;
+        let edges = EXAMPLE1.1;
+        let ug = test_helper(&verts, &edges);
+        // All hypergraphs should be depth 0.
+        assert_eq!(ug.depth(), 0);
     }
 }
