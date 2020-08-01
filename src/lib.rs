@@ -222,8 +222,6 @@ impl<N, E> Ubergraph<N, E, usize> {
         }
         k
     }
-
-
 }
 
 /// A member of an edge with a direction, either Incoming or Outgoing.
@@ -297,24 +295,26 @@ mod tests {
         ug
     }
 
+    struct TestGraph<'a, T> {
+        verts: &'a [T],
+        edges: &'a [&'a [EdgeMember<usize, usize>]],
+    }
+
     // Example 2 from https://arxiv.org/pdf/1704.05547.pdf
-    const EXAMPLE2: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
-        &[1, 2, 3],
-        &[
+    const EXAMPLE2: TestGraph<u32> = TestGraph {
+        verts: &[1, 2, 3],
+        edges: &[
             &[Vertex(0)],
             &[Vertex(0), Vertex(2)],
             &[Vertex(0), Vertex(2), Edge(0)],
             &[Vertex(1), Edge(1)],
             &[Vertex(0), Edge(3)],
         ],
-    );
+    };
 
     #[test]
     fn ubergraph_example_2() {
-        let verts = EXAMPLE2.0;
-        let edges = EXAMPLE2.1;
-
-        let ug = test_helper(&verts, &edges);
+        let ug = test_helper(&EXAMPLE2.verts, &EXAMPLE2.edges);
         // For some reason this output looks nicer than assert_debug_snapshot!().
         let dot_str = format!("{:?}", Dot::with_config(&ug.levi(), Default::default()));
         insta::assert_snapshot!(dot_str);
@@ -323,7 +323,7 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn example2_matrix() {
-        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
         let matrix = ug.matrix();
 
         assert_eq!(
@@ -342,13 +342,13 @@ mod tests {
 
     #[test]
     fn ubergraph_depth() {
-        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
 
         assert_eq!(ug.depth(), 2);
     }
     #[test]
     fn ubergraph_edge_depth() {
-        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
 
         assert_eq!(ug.edge_depth(&EdgeMember::Edge(1), 0), 0);
         assert_eq!(ug.edge_depth(&EdgeMember::Edge(2), 0), 1);
@@ -360,7 +360,7 @@ mod tests {
         // The matrix constructor *should* be more efficient, but this one is more obviously
         // correct.
         // TODO check this with critereon...
-        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
         assert_eq!(
             ug.matrix().data.as_vec(),
             &ug.edges
@@ -378,21 +378,19 @@ mod tests {
     }
 
     // Example 1 from https://arxiv.org/pdf/1704.05547.pdf
-    const EXAMPLE1: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
-        &[1, 2, 3, 4, 5],
-        &[
+    const EXAMPLE1: TestGraph<u32> = TestGraph {
+        verts: &[1, 2, 3, 4, 5],
+        edges: &[
             &[Vertex(0)],
             &[Vertex(0), Vertex(2)],
             &[Vertex(1), Vertex(2)],
             &[Vertex(0), Vertex(2), Vertex(4)],
-        ]
-    );
+        ],
+    };
 
     #[test]
     fn hypergraph_example_1() {
-        let verts = EXAMPLE1.0;
-        let edges = EXAMPLE1.1;
-        let ug = test_helper(&verts, &edges);
+        let ug = test_helper(&EXAMPLE1.verts, &EXAMPLE1.edges);
         // For some reason this output looks nicer than assert_debug_snapshot!().
         let dot_str = format!("{:?}", Dot::with_config(&ug.levi(), Default::default()));
         insta::assert_snapshot!(dot_str);
@@ -400,9 +398,7 @@ mod tests {
 
     #[test]
     fn hypergraph_depth() {
-        let verts = EXAMPLE1.0;
-        let edges = EXAMPLE1.1;
-        let ug = test_helper(&verts, &edges);
+        let ug = test_helper(&EXAMPLE1.verts, &EXAMPLE1.edges);
         // All hypergraphs should be depth 0.
         assert_eq!(ug.depth(), 0);
     }
