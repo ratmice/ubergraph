@@ -260,7 +260,7 @@ mod tests {
 
     // https://arxiv.org/pdf/1704.05547.pdf
     // Example 2 from
-    const Example2: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
+    const EXAMPLE2: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
         &[1, 2, 3],
         &[
             &[Vertex(0)],
@@ -273,9 +273,8 @@ mod tests {
 
     #[test]
     fn ubergraph_example_2() {
-        use EdgeMember::*;
-        let verts = Example2.0;
-        let edges = Example2.1;
+        let verts = EXAMPLE2.0;
+        let edges = EXAMPLE2.1;
 
         let ug = test_helper(&verts, &edges);
         // For some reason this output looks nicer than assert_debug_snapshot!().
@@ -286,7 +285,7 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn example2_matrix() {
-        let ug = test_helper(Example2.0, Example2.1);
+        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
         let matrix = ug.matrix();
 
         assert_eq!(
@@ -307,7 +306,7 @@ mod tests {
     fn check_matrix_impl() {
         // The matrix constructor *should* be more efficient, but this one is more obviously
         // correct.
-        let ug = test_helper(Example2.0, Example2.1);
+        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
         assert_eq!(ug.matrix().data.as_vec(),
                         &ug.edges.iter().flat_map(|(_, edge_set)| {
                             (0..ug.vertices.len())
