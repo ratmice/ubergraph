@@ -186,6 +186,40 @@ impl<N, E> Ubergraph<N, E, usize> {
         }
         g
     }
+
+    fn relative_index(&self, edge: EdgeMember<usize, usize>) -> usize {
+        match edge {
+            EdgeMember::Vertex(v) => v,
+            EdgeMember::Edge(edge_idx) => edge_idx,
+        }
+    }
+
+    // Probably need to hand roll this with loop labels
+    // instead of recursion to avoid overflowing the stack.
+    fn edge_depth(&self, edge: &EdgeMember<usize, usize>, k: usize) -> usize {
+        assert!(EdgeMember::is_edge(*edge));
+        let idx = self.relative_index(*edge);
+        let mut max_depth = k;
+        for edge in self.edges[idx].1.iter().filter(|edge| edge.is_edge()) {
+            let depth = self.edge_depth(edge, k + 1);
+            if depth > max_depth {
+                max_depth = depth
+            }
+        }
+        max_depth
+    }
+
+    pub fn depth(&self) -> usize {
+        let mut k = 0;
+        assert!(self.edges.len() > 0);
+        for (idx, _) in self.edges.iter().enumerate() {
+            let depth = self.edge_depth(&EdgeMember::Edge(idx), 0);
+            if depth > k {
+                k = depth
+            }
+        }
+        k
+    }
 }
 
 /// A member of an edge with a direction, either Incoming or Outgoing.
@@ -303,19 +337,39 @@ mod tests {
     }
 
     #[test]
+    fn ubergraph_depth() {
+        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+
+        assert_eq!(ug.depth(), 2);
+    }
+    #[test]
+    fn ubergraph_edge_depth() {
+        let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
+
+        assert_eq!(ug.edge_depth(&EdgeMember::Edge(1), 0), 0);
+        assert_eq!(ug.edge_depth(&EdgeMember::Edge(2), 0), 1);
+        assert_eq!(ug.edge_depth(&EdgeMember::Edge(4), 0), 2);
+    }
+
+    #[test]
     fn check_matrix_impl() {
         // The matrix constructor *should* be more efficient, but this one is more obviously
         // correct.
+        // TODO check this with critereon...
         let ug = test_helper(EXAMPLE2.0, EXAMPLE2.1);
-        assert_eq!(ug.matrix().data.as_vec(),
-                        &ug.edges.iter().flat_map(|(_, edge_set)| {
-                            (0..ug.vertices.len())
-                                .map(move |idx| edge_set.contains(&EdgeMember::Vertex(idx)).into())
-                                .chain(
-                                    (0..ug.edges.len())
-                                        .map(move |idx| edge_set.contains(&EdgeMember::Edge(idx)).into()),
-                                )
-                        }).collect::<Vec<Bool<bool>>>()
+        assert_eq!(
+            ug.matrix().data.as_vec(),
+            &ug.edges
+                .iter()
+                .flat_map(|(_, edge_set)| {
+                    (0..ug.vertices.len())
+                        .map(move |idx| edge_set.contains(&EdgeMember::Vertex(idx)).into())
+                        .chain(
+                            (0..ug.edges.len())
+                                .map(move |idx| edge_set.contains(&EdgeMember::Edge(idx)).into()),
+                        )
+                })
+                .collect::<Vec<Bool<bool>>>()
         )
     }
 
