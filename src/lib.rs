@@ -69,6 +69,7 @@ impl<VIx: Ord, EIx: Ord> Ord for EdgeMember<VIx, EIx> {
 }
 
 /// A recursive hypergraph structure
+/// Currently not well-founded, in that the construction allows you to introduce cycles.
 pub struct Ubergraph<N, E, Ix: Ord> {
     // In theory I'd probably rather just do away with N
     // and make vertices merely a counter or interval tree.
@@ -212,6 +213,7 @@ impl<N, E> Ubergraph<N, E, usize> {
     pub fn depth(&self) -> usize {
         let mut k = 0;
         assert!(self.edges.len() > 0);
+        // FIXME We shouldn't traverse edges which were already visited.
         for (idx, _) in self.edges.iter().enumerate() {
             let depth = self.edge_depth(&EdgeMember::Edge(idx), 0);
             if depth > k {
@@ -220,6 +222,8 @@ impl<N, E> Ubergraph<N, E, usize> {
         }
         k
     }
+
+
 }
 
 /// A member of an edge with a direction, either Incoming or Outgoing.
@@ -247,6 +251,7 @@ impl<VIx: Ord, EIx: Ord> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, 
 /// `[(Incoming, Edge(0)) (Outgoing, Edge(1))]`
 ///
 /// Seems like the natural thing to do, We will have to see for the Levi graph though.
+/// It seems like Directed(EdgeMember::Edge(_)) can produce non-well founded ubergraphs.
 pub struct DirectedUbergraph<N, E, Ix: Ord> {
     vertices: Vec<N>,
     edges: Vec<(E, Vec<DirectedEdgeMember<Ix, Ix>>)>,
