@@ -7,12 +7,14 @@
 //! Just supports the basics of adding vertices and edges, and computing the incidence graph.
 
 use either::Either;
-use nalgebra::base::{DMatrix, Matrix, VecStorage};
+use itertools::Itertools;
+use nalgebra::base::{Matrix, MatrixMN, VecStorage};
 use nalgebra::Dynamic;
 use petgraph::graph::{Graph, NodeIndex};
 use petgraph::{Directed, Direction};
 use std::cmp::Ordering;
 use std::iter::Iterator;
+
 mod num_bool;
 
 use num_bool::Bool;
@@ -25,10 +27,27 @@ use num_bool::Bool;
 /// which can be either a Vertex or an Edge.
 ///
 /// I've called this EdgeMember to avoid the confusion.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum EdgeMember<VIx: Ord, EIx: Ord> {
     Edge(EIx),
     Vertex(VIx),
+}
+
+impl<VIx: Ord, EIx: Ord> EdgeMember<VIx, EIx> {
+    pub fn is_edge(self) -> bool {
+        if let EdgeMember::Edge(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+    pub fn is_vertex(self) -> bool {
+        if let EdgeMember::Vertex(_) = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<VIx: Ord, EIx: Ord> PartialOrd for EdgeMember<VIx, EIx> {
@@ -97,14 +116,22 @@ impl<N, E> Ubergraph<N, E, usize> {
     }
 
     fn edge_node_to_node_index(&self, edge: EdgeMember<usize, usize>) -> NodeIndex<usize> {
+        self.internal_index(edge).into()
+    }
+
+    fn internal_index(&self, edge: EdgeMember<usize, usize>) -> usize {
         match edge {
-            EdgeMember::Vertex(v) => v.into(),
-            EdgeMember::Edge(edge_idx) => (self.vertices.len() + edge_idx).into(),
+            EdgeMember::Vertex(v) => v,
+            EdgeMember::Edge(edge_idx) => (self.vertices.len() + edge_idx),
         }
     }
 
-    // FIXME
-    fn matrix(
+    /// nalgebra probably *isn't* the right matrix to be using for a boolean matrix,
+    /// It seems a bit overkill, and it requires us to convert bool into a numeric type.
+    /// However, nalgebra does work with a non-square matrix,
+    /// Which is why i'm using it anyway for now.
+    /// The returned matrix will be N*M+M in size
+    pub fn matrix(
         &self,
     ) -> Matrix<
         Bool<bool>,
@@ -112,12 +139,24 @@ impl<N, E> Ubergraph<N, E, usize> {
         nalgebra::Dynamic,
         VecStorage<Bool<bool>, Dynamic, Dynamic>,
     > {
-        let matrix = DMatrix::<Bool<bool>>::from_element(
+        MatrixMN::<Bool<bool>, nalgebra::Dynamic, nalgebra::Dynamic>::from_iterator(
             self.vertices.len() + self.edges.len(),
             self.edges.len(),
-            false.into(),
-        );
-        matrix
+            self.edges.iter().flat_map(|(_, edge_set)| {
+                let mut pos = 0;
+                edge_set
+                    .iter()
+                    .flat_map(move |edge| {
+                        let idx = self.internal_index(*edge);
+                        let it = std::iter::repeat(false.into())
+                            .take(idx - pos)
+                            .chain(std::iter::once(true.into()));
+                        pos = idx + 1;
+                        it
+                    })
+                    .pad_using(self.vertices.len() + self.edges.len(), |_| false.into())
+            }),
+        )
     }
 
     pub fn levi(&self) -> Graph<Either<&N, &E>, (), Directed, usize> {
@@ -198,6 +237,7 @@ mod tests {
     use super::*;
     use insta;
     use petgraph::dot::Dot;
+    use EdgeMember::*;
 
     fn test_helper<T: std::fmt::Display>(
         vertices: &[T],
@@ -219,18 +259,23 @@ mod tests {
     }
 
     // https://arxiv.org/pdf/1704.05547.pdf
-    // Example 2.
+    // Example 2 from
+    const Example2: (&[u32], &[&[EdgeMember<usize, usize>]]) = (
+        &[1, 2, 3],
+        &[
+            &[Vertex(0)],
+            &[Vertex(0), Vertex(2)],
+            &[Vertex(0), Vertex(2), Edge(0)],
+            &[Vertex(1), Edge(1)],
+            &[Vertex(0), Edge(3)],
+        ],
+    );
+
     #[test]
-    fn example_2() {
+    fn ubergraph_example_2() {
         use EdgeMember::*;
-        let verts = [1, 2, 3];
-        let edges = [
-            &[Vertex(0)][..],
-            &[Vertex(0), Vertex(2)][..],
-            &[Vertex(0), Vertex(2), Edge(0)][..],
-            &[Vertex(1), Edge(1)][..],
-            &[Vertex(0), Edge(3)][..],
-        ];
+        let verts = Example2.0;
+        let edges = Example2.1;
 
         let ug = test_helper(&verts, &edges);
         // For some reason this output looks nicer than assert_debug_snapshot!().
@@ -238,7 +283,43 @@ mod tests {
         insta::assert_snapshot!(dot_str);
     }
 
-    // https://arxiv.org/pdf/1704.05547.pdf
+    #[test]
+    #[rustfmt::skip]
+    fn example2_matrix() {
+        let ug = test_helper(Example2.0, Example2.1);
+        let matrix = ug.matrix();
+
+        assert_eq!(
+             matrix.as_slice(),
+            vec![ true, false, false, false, false, false, false, false,
+                  true, false, true, false, false, false, false, false,
+                  true, false, true, true, false, false, false, false,
+                  false, true, false, false, true, false, false, false,
+                  true, false, false, false, false, false, true, false ]
+            .iter()
+            .map(|b| Bool::from(*b))
+            .collect::<Vec<Bool<bool>>>()
+            .as_slice()
+        )
+    }
+
+    #[test]
+    fn check_matrix_impl() {
+        // The matrix constructor *should* be more efficient, but this one is more obviously
+        // correct.
+        let ug = test_helper(Example2.0, Example2.1);
+        assert_eq!(ug.matrix().data.as_vec(),
+                        &ug.edges.iter().flat_map(|(_, edge_set)| {
+                            (0..ug.vertices.len())
+                                .map(move |idx| edge_set.contains(&EdgeMember::Vertex(idx)).into())
+                                .chain(
+                                    (0..ug.edges.len())
+                                        .map(move |idx| edge_set.contains(&EdgeMember::Edge(idx)).into()),
+                                )
+                        }).collect::<Vec<Bool<bool>>>()
+        )
+    }
+
     #[test]
     fn hypergraph_example_1() {
         use EdgeMember::*;
