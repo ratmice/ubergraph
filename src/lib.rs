@@ -147,8 +147,8 @@ impl<N, E> Ubergraph<N, E, usize> {
                 let mut pos = 0;
                 edge_set
                     .iter()
-                    .flat_map(move |edge| {
-                        let idx = self.internal_index(*edge);
+                    .flat_map(move |edge_mem| {
+                        let idx = self.internal_index(*edge_mem);
                         let it = std::iter::repeat(false.into())
                             .take(idx - pos)
                             .chain(std::iter::once(true.into()));
