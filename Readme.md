@@ -14,5 +14,5 @@ No algorithms have been implemented yet.
 ## Notes, and initial impressions of the implementation
 
 There are lots of rough edges (ownership, Node and edge Index types),
-in particular though lacking tail recursion, unrolling some of these instances of recursion
+in particular due to rusts lack of tail recursion unrolling some of these instances of recursion
 to avoid stack frames on recursive calls seems like it is going to be painful.
