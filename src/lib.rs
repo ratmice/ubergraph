@@ -122,6 +122,33 @@ impl<N, E> HypergraphRepresentation<'_, N, E, usize> {
             }),
         )
     }
+    pub fn levi(&self) -> Graph<Either<&N, &E>, (), Directed, usize> {
+        let mut g = Graph::<Either<&N, &E>, (), Directed, usize>::with_capacity(
+            self.ubergraph.vertices.len() + self.edges.len(),
+            0,
+        );
+
+        for vert in self.ubergraph.vertices.iter() {
+            g.add_node(Either::Left(&vert));
+        }
+
+        // unlike for ubergraph this is fine with 2 passes,
+        // since we've already added all the vertices, there no possibility to run across an edge
+        // directed at anything which hasn't been added.
+        for (eidx, edge_set) in self.edges.iter().enumerate() {
+            g.add_node(Either::Right(&self.ubergraph.edges[eidx].0));
+            for edge_mem in edge_set.iter() {
+                match edge_mem {
+                    HyperEdgeMember::Vertex(vidx) => g.add_edge(
+                        (*vidx).into(),
+                        (self.ubergraph.vertices.len() + eidx).into(),
+                        (),
+                    ),
+                };
+            }
+        }
+        g
+    }
 }
 
 impl<N, E> Default for Ubergraph<N, E, usize> {
@@ -223,11 +250,11 @@ impl<N, E> Ubergraph<N, E, usize> {
         // must be done in a 3rd pass after adding all the vertices and edges as vertices.
         // otherwise `add_edge` could panic if we are addding an edge to an edge which
         // without an associated vertex.
-        for (i, (_, nodes)) in self.edge_iter().enumerate() {
-            for node in nodes {
+        for (eidx, (_, edge_set)) in self.edge_iter().enumerate() {
+            for edge_mem in edge_set {
                 g.add_edge(
-                    self.edge_node_to_node_index(*node),
-                    self.edge_node_to_node_index(EdgeMember::Edge(i)),
+                    self.edge_node_to_node_index(*edge_mem),
+                    self.edge_node_to_node_index(EdgeMember::Edge(eidx)),
                     (),
                 );
             }
@@ -438,7 +465,7 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn example2_hypergraph_matrix() {
+    fn example2_to_hypergraph_matrix() {
         let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
         assert_eq!(ug.hypergraph().matrix().as_slice(),
             vec![ true, false, false,
@@ -466,6 +493,16 @@ mod tests {
         assert_eq!(ug.edge_depth(&EdgeMember::Edge(1), 0), 0);
         assert_eq!(ug.edge_depth(&EdgeMember::Edge(2), 0), 1);
         assert_eq!(ug.edge_depth(&EdgeMember::Edge(4), 0), 2);
+    }
+
+    #[test]
+    fn ubergraph_to_hypergraph_to_levi_graph() {
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
+        let hg = ug.hypergraph();
+        let levi = hg.levi();
+
+        let dot_str = format!("{:?}", Dot::with_config(&levi, Default::default()));
+        insta::assert_snapshot!(dot_str);
     }
 
     #[test]
