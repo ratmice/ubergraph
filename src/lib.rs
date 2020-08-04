@@ -29,8 +29,8 @@ use num_bool::Bool;
 /// I've called this EdgeMember to avoid the confusion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum EdgeMember<VIx: Ord, EIx: Ord> {
-    Edge(EIx),
     Vertex(VIx),
+    Edge(EIx),
 }
 
 impl<VIx: Ord, EIx: Ord> EdgeMember<VIx, EIx> {
@@ -75,6 +75,53 @@ pub struct Ubergraph<N, E, Ix: Ord> {
     // and make vertices merely a counter or interval tree.
     vertices: Vec<N>,
     edges: Vec<(E, im::OrdSet<EdgeMember<Ix, Ix>>)>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Ord, PartialOrd)]
+pub enum HyperEdgeMember<VIx: Ord> {
+    Vertex(VIx),
+}
+
+///
+/// This is not ideal, as the ubergraph.edges can't be dropped,
+/// but we don't really want to clone the vertices vector
+/// the actual ownership and field types here are pretty certainly
+/// assured to change.
+pub struct HypergraphRepresentation<'a, N, E, Ix: Ord> {
+    ubergraph: &'a Ubergraph<N, E, Ix>,
+    edges: Vec<im::OrdSet<HyperEdgeMember<Ix>>>,
+}
+
+impl<N, E> HypergraphRepresentation<'_, N, E, usize> {
+    pub fn matrix(
+        &self,
+    ) -> Matrix<
+        Bool<bool>,
+        nalgebra::Dynamic,
+        nalgebra::Dynamic,
+        VecStorage<Bool<bool>, Dynamic, Dynamic>,
+    > {
+        MatrixMN::<Bool<bool>, nalgebra::Dynamic, nalgebra::Dynamic>::from_iterator(
+            self.ubergraph.vertices.len(),
+            self.edges.len(),
+            self.edges.iter().flat_map(|edge_set| {
+                let mut pos = 0;
+                edge_set
+                    .iter()
+                    .flat_map(move |edge_mem| {
+                        let idx = match *edge_mem {
+                            HyperEdgeMember::Vertex(x) => x,
+                        };
+                        let it = std::iter::repeat(false.into())
+                            .take(idx - pos)
+                            .chain(std::iter::once(true.into()));
+                        pos = idx + 1;
+                        it
+                    })
+                    .pad_using(self.ubergraph.vertices.len(), |_| false.into())
+            }),
+        )
+    }
 }
 
 impl<N, E> Default for Ubergraph<N, E, usize> {
@@ -186,6 +233,44 @@ impl<N, E> Ubergraph<N, E, usize> {
             }
         }
         g
+    }
+
+    fn hypergraph_expansion(
+        &self,
+        edge_set: &im::OrdSet<EdgeMember<usize, usize>>,
+    ) -> im::OrdSet<EdgeMember<usize, usize>> {
+        edge_set
+            .iter()
+            .flat_map(|edge_mem| match *edge_mem {
+                EdgeMember::Edge(x) => edge_set
+                    .without(&EdgeMember::Edge(x))
+                    .union(self.hypergraph_expansion(&self.edges[x].1)),
+                vert => im::OrdSet::unit(vert),
+            })
+            .collect()
+    }
+
+    /// Returns an ubergraph, with no EdgeMembers that are EdgeMember::Edge,
+    /// Edge to Edge links are collapsed recursively into Vertices.
+    /// In this sense it is still an ubergraph with N + M * M matrix, but the + M rows are all
+    /// zero.
+    pub fn hypergraph(&self) -> HypergraphRepresentation<'_, N, E, usize> {
+        HypergraphRepresentation {
+            ubergraph: self,
+            edges: self
+                .edges
+                .iter()
+                .map(|(_, edge_set)| {
+                    self.hypergraph_expansion(edge_set)
+                        .iter()
+                        .map(|edge_mem| match edge_mem {
+                            EdgeMember::Vertex(v) => HyperEdgeMember::Vertex(*v),
+                            _ => unreachable!(),
+                        })
+                        .collect()
+                })
+                .collect(),
+        }
     }
 
     fn relative_index(&self, edge: EdgeMember<usize, usize>) -> usize {
@@ -338,6 +423,23 @@ mod tests {
             .collect::<Vec<Bool<bool>>>()
             .as_slice()
         )
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn example2_hypergraph_matrix() {
+        let ug = test_helper(EXAMPLE2.verts, EXAMPLE2.edges);
+        assert_eq!(ug.hypergraph().matrix().as_slice(),
+            vec![ true, false, false,
+                  true, false, true,
+                  true, false, true,
+                  true, true,  true,
+                  true, true,  true,  ]
+            .iter()
+            .map(|b| Bool::from(*b))
+            .collect::<Vec<Bool<bool>>>()
+            .as_slice()
+        );
     }
 
     #[test]
