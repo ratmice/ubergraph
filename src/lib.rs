@@ -308,12 +308,27 @@ impl<N, E> Ubergraph<N, E, usize> {
 }
 
 /// A member of an edge with a direction, either Incoming or Outgoing.
+///
+/// The following seems like the natural thing to do, however can lead
+/// not well-founded graphs, consider the graph e1 = {(Incoming, e2), (Outgoing, e2)}
 pub type DirectedEdgeMember<VIx, EIx> = (Direction, EdgeMember<VIx, EIx>);
 
 impl<VIx: Ord, EIx: Ord> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, EIx> {
     fn into(self) -> EdgeMember<VIx, EIx> {
         self.1
     }
+}
+
+/// A second definition of edge member for edges with directed vertices,
+/// either `Incoming` or `Outgoing`.
+///
+/// Where the levy graph may only contains Edge -> Vertex cycles.
+/// As such all paths through edges, not traversing vertices remain acyclic.
+///
+/// This seems like a better definition which should be sufficient for my purposes...
+pub enum VertexDirectedEdgeMember<VIx: Ord, EIx: Ord> {
+    Vertex(Direction, VIx),
+    Edge(EIx),
 }
 
 /// A directed recursive ubergraph structure.
@@ -331,8 +346,6 @@ impl<VIx: Ord, EIx: Ord> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, 
 /// While a directed uberedge merely extends the Direction to edges.
 /// `[(Incoming, Edge(0)) (Outgoing, Edge(1))]`
 ///
-/// Seems like the natural thing to do, We will have to see for the Levi graph though.
-/// It seems like Directed(EdgeMember::Edge(_)) can produce non-well founded ubergraphs.
 pub struct DirectedUbergraph<N, E, Ix: Ord> {
     vertices: Vec<N>,
     edges: Vec<(E, Vec<DirectedEdgeMember<Ix, Ix>>)>,
