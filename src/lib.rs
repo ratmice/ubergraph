@@ -242,9 +242,7 @@ impl<N, E> Ubergraph<N, E, usize> {
         edge_set
             .iter()
             .flat_map(|edge_mem| match *edge_mem {
-                EdgeMember::Edge(x) => edge_set
-                    .without(&EdgeMember::Edge(x))
-                    .union(self.hypergraph_expansion(&self.edges[x].1)),
+                EdgeMember::Edge(x) => self.hypergraph_expansion(&self.edges[x].1),
                 vert => im::OrdSet::unit(vert),
             })
             .collect()
