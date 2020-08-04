@@ -70,11 +70,9 @@ impl<VIx: Ord, EIx: Ord> Ord for EdgeMember<VIx, EIx> {
 
 /// A recursive hypergraph structure
 /// Currently not well-founded, in that the construction allows you to introduce cycles.
-pub struct Ubergraph<N, E, Ix: Ord> {
-    // In theory I'd probably rather just do away with N
-    // and make vertices merely a counter or interval tree.
-    vertices: Vec<N>,
-    edges: Vec<(E, im::OrdSet<EdgeMember<Ix, Ix>>)>,
+pub struct Ubergraph<V, W, Ix: Ord> {
+    vertices: Vec<V>,
+    edges: Vec<(W, im::OrdSet<EdgeMember<Ix, Ix>>)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Ord, PartialOrd)]
@@ -87,12 +85,12 @@ pub enum HyperEdgeMember<VIx: Ord> {
 /// but we don't really want to clone the vertices vector
 /// the actual ownership and field types here are pretty certainly
 /// assured to change.
-pub struct HypergraphRepresentation<'a, N, E, Ix: Ord> {
-    ubergraph: &'a Ubergraph<N, E, Ix>,
+pub struct HypergraphRepresentation<'a, V, W, Ix: Ord> {
+    ubergraph: &'a Ubergraph<V, W, Ix>,
     edges: Vec<im::OrdSet<HyperEdgeMember<Ix>>>,
 }
 
-impl<N, E> HypergraphRepresentation<'_, N, E, usize> {
+impl<V, W> HypergraphRepresentation<'_, V, W, usize> {
     pub fn matrix(
         &self,
     ) -> Matrix<
@@ -122,8 +120,8 @@ impl<N, E> HypergraphRepresentation<'_, N, E, usize> {
             }),
         )
     }
-    pub fn levi(&self) -> Graph<Either<&N, &E>, (), Directed, usize> {
-        let mut g = Graph::<Either<&N, &E>, (), Directed, usize>::with_capacity(
+    pub fn levi(&self) -> Graph<Either<&V, &W>, (), Directed, usize> {
+        let mut g = Graph::<Either<&V, &W>, (), Directed, usize>::with_capacity(
             self.ubergraph.vertices.len() + self.edges.len(),
             0,
         );
@@ -151,42 +149,42 @@ impl<N, E> HypergraphRepresentation<'_, N, E, usize> {
     }
 }
 
-impl<N, E> Default for Ubergraph<N, E, usize> {
+impl<V, W> Default for Ubergraph<V, W, usize> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<N, E> Ubergraph<N, E, usize> {
-    pub fn new() -> Ubergraph<N, E, usize> {
+impl<V, W> Ubergraph<V, W, usize> {
+    pub fn new() -> Ubergraph<V, W, usize> {
         Ubergraph {
             vertices: Vec::new(),
             edges: Vec::new(),
         }
     }
 
-    pub fn add_vertex(&mut self, n: N) {
+    pub fn add_vertex(&mut self, n: V) {
         self.vertices.push(n);
     }
 
-    pub fn add_edge(&mut self, e: E) {
-        self.edges.push((e, im::OrdSet::new()));
+    pub fn add_edge(&mut self, w: W) {
+        self.edges.push((w, im::OrdSet::new()));
     }
 
     pub fn add_node_to_edge(&mut self, idx: usize, en: EdgeMember<usize, usize>) {
-        let (_, edge_nodes): &mut (E, im::OrdSet<EdgeMember<usize, usize>>) = &mut self.edges[idx];
+        let (_, edge_nodes): &mut (W, im::OrdSet<EdgeMember<usize, usize>>) = &mut self.edges[idx];
         edge_nodes.insert(en);
     }
 
     pub fn edge_iter(
         &self,
-    ) -> impl Iterator<Item = (&E, impl Iterator<Item = &EdgeMember<usize, usize>>)> {
+    ) -> impl Iterator<Item = (&W, impl Iterator<Item = &EdgeMember<usize, usize>>)> {
         self.edges
             .iter()
             .map(|(weight, edge_vec)| (weight, edge_vec.iter()))
     }
 
-    pub fn vert_iter(&self) -> impl Iterator<Item = &N> {
+    pub fn vert_iter(&self) -> impl Iterator<Item = &V> {
         self.vertices.iter()
     }
 
@@ -234,8 +232,8 @@ impl<N, E> Ubergraph<N, E, usize> {
         )
     }
 
-    pub fn levi(&self) -> Graph<Either<&N, &E>, (), Directed, usize> {
-        let mut g = Graph::<Either<&N, &E>, (), Directed, usize>::with_capacity(
+    pub fn levi(&self) -> Graph<Either<&V, &W>, (), Directed, usize> {
+        let mut g = Graph::<Either<&V, &W>, (), Directed, usize>::with_capacity(
             self.vertices.len() + self.edges.len(),
             0,
         );
@@ -279,7 +277,7 @@ impl<N, E> Ubergraph<N, E, usize> {
     /// Edge to Edge links are collapsed recursively into Vertices.
     /// In this sense it is still an ubergraph with N + M * M matrix, but the + M rows are all
     /// zero.
-    pub fn hypergraph(&self) -> HypergraphRepresentation<'_, N, E, usize> {
+    pub fn hypergraph(&self) -> HypergraphRepresentation<'_, V, W, usize> {
         HypergraphRepresentation {
             ubergraph: self,
             edges: self
