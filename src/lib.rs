@@ -189,10 +189,10 @@ impl<V, W> Ubergraph<V, W, usize> {
     }
 
     fn edge_node_to_node_index(&self, edge: EdgeMember<usize, usize>) -> NodeIndex<usize> {
-        self.internal_index(edge).into()
+        self.column_index(edge).into()
     }
 
-    fn internal_index(&self, edge: EdgeMember<usize, usize>) -> usize {
+    fn column_index(&self, edge: EdgeMember<usize, usize>) -> usize {
         match edge {
             EdgeMember::Vertex(v) => v,
             EdgeMember::Edge(edge_idx) => (self.vertices.len() + edge_idx),
@@ -220,7 +220,7 @@ impl<V, W> Ubergraph<V, W, usize> {
                 edge_set
                     .iter()
                     .flat_map(move |edge_mem| {
-                        let idx = self.internal_index(*edge_mem);
+                        let idx = self.column_index(*edge_mem);
                         let it = std::iter::repeat(false.into())
                             .take(idx - pos)
                             .chain(std::iter::once(true.into()));
