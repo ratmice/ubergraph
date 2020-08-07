@@ -16,6 +16,7 @@ use std::cmp::Ordering;
 use std::iter::Iterator;
 
 mod num_bool;
+mod indices;
 
 use num_bool::Bool;
 
