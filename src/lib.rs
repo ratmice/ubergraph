@@ -15,8 +15,8 @@ use petgraph::{Directed, Direction};
 use std::cmp::Ordering;
 use std::iter::Iterator;
 
-mod num_bool;
 mod indices;
+mod num_bool;
 
 use num_bool::Bool;
 
@@ -345,6 +345,9 @@ impl<VIx: Ord, EIx: Ord> Into<EdgeMember<VIx, EIx>> for DirectedEdgeMember<VIx, 
     }
 }
 
+/// Maybe if we throw more specializations in here a nice generalization will appear.
+/// Eventually we'll need to clean all this up.
+///
 /// A second definition of edge member for edges with directed vertices,
 /// either `Incoming` or `Outgoing`.
 ///
@@ -361,7 +364,7 @@ pub enum VertexDirectedEdgeMember<VIx: Ord, EIx: Ord> {
 ///
 /// The ubergraph definition doesn't defined directed ubergraphs.
 ///
-/// The definition given in [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy) [DOI](https://doi.org/10.1016/0166-218X(93)90045-P)
+/// The definition somewhat related to [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy) [DOI](https://doi.org/10.1016/0166-218X(93)90045-P)
 /// uses a enum {-1, 0, 1} matrix.
 ///
 /// Here we use a tuple, `(petgraph::Direction, EdgeMember)`, dropping the 0
@@ -389,6 +392,50 @@ impl<N, E> DirectedUbergraph<N, E, usize> {
     pub fn vert_iter(&self) -> impl Iterator<Item = &N> {
         self.vertices.iter()
     }
+}
+
+/// Arrows point from source to target.
+/// Basically The definition from [Directed hypergraphs and Applications](http://www.di.unipi.it/~gallo/Papers/GLNP93.ps.gz) (authors copy) [DOI](https://doi.org/10.1016/0166-218X(93)90045-P)
+pub struct DirectedHyperEdge<Ix> {
+    source: im::OrdSet<Ix>,
+    target: im::OrdSet<Ix>,
+}
+
+pub struct GalloDirectedUbergraph<N, E, Ix: Ord> {
+    vertices: Vec<N>,
+    edges: (E, DirectedHyperEdge<Ix>),
+}
+
+// In theory the above definition covers these below, but
+// these are more specialized.
+pub struct FArc<Ix> {
+    source: Ix,
+    target: im::OrdSet<Ix>,
+}
+
+pub struct BArc<Ix> {
+    source: im::OrdSet<Ix>,
+    target: Ix,
+}
+
+enum BFArc<Ix> {
+    FArc(FArc<Ix>),
+    BArc(BArc<Ix>),
+}
+
+pub struct BGraph<N, E, Ix: Ord> {
+    vertices: Vec<N>,
+    edges: (E, BArc<Ix>),
+}
+
+pub struct FGraph<N, E, Ix: Ord> {
+    vertices: Vec<N>,
+    edges: (E, FArc<Ix>),
+}
+
+pub struct BFGraph<N, E, Ix: Ord> {
+    vertices: Vec<N>,
+    edges: (E, BFArc<Ix>),
 }
 
 #[cfg(test)]
